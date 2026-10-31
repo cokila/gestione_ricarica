@@ -1,0 +1,163 @@
+execute failed:
+    Could not start serviceManager:
+        Cannot locate HTTP port of service:
+            Request for service HTTP address failed:
+                Cannot connect to ipc via "/tmp/state-ipc/state-release.sock":
+                    'dial unix /tmp/state-ipc/state-release.sock: connect: operation not permitted':
+                        'connect: operation not permitted': operation not permitted
+The bundled macbook-charge-limit.c is upstream code from:
+https://github.com/jtbrough/macbook-charge-limit
+https://raw.githubusercontent.com/jtbrough/macbook-charge-limit/main/src/macbook-charge-limit.c
+Retrieved during setup on 2026-10-12. SPDX-License-Identifier: MIT.
+
+Gestione ricarica: profilo prestazioni e autonomia, aggiornato 2026-10-24.
+Il nome storico macbook-extreme-power.service e la chiave extreme_battery
+sono conservati per compatibilita'. Profilo attuale: balanced-rapl-v2.
+
+ATTIVAZIONE
+Apri Gestione ricarica sul Desktop e premi Impostazioni 80% / 100% e risparmio.
+Mantieni il limite desiderato (80% o 100%),
+scegli Risparmio intelligente a batteria = Attivo e premi Applica. Inserisci
+la password amministratore nel terminale. Il servizio di sistema viene
+aggiornato solo dopo questa autenticazione: modificare i file nella cartella
+utente non sostituisce il codice gia' in esecuzione.
+Per disattivare, scegli Disattivo e premi Applica. L'avviso al 20% resta attivo.
+L'installer ferma il servizio precedente, verifica il ripristino e copia il
+codice in /usr/local/lib/macbook-charge con proprietario root. Nessun riavvio
+del computer e' necessario. Il limite di ricarica e' scritto e riletto via SMC;
+una batteria gia' oltre il limite non viene scaricata automaticamente.
+
+CPU E TURBO
+Il governor schedutil sceglie la frequenza in base al lavoro da eseguire.
+Se non disponibile, usa ondemand o conservative. Solo intel_pstate in modalita'
+attiva usa il proprio powersave adattivo: il powersave generico blocca al minimo.
+La frequenza minima resta quella hardware (1,2 GHz sull'i7-3720QM), mentre il
+massimo con RAPL confermato e' quello precedente (fino a 3,6 GHz su questo
+MacBook). Il turbo resta affidato a governor e hardware entro limiti di potenza,
+rispettando un'eventuale disabilitazione del turbo gia' presente in origine.
+Non si forza la frequenza massima e non si applica un cronometro al turbo.
+
+Budget iniziali del package CPU, distinti dal consumo dell'intero computer:
+  normale, batteria >20%:                  25 W prolungati / 40 W brevi
+  batteria <=20%:                          18 W prolungati / 28 W brevi
+  batteria <=10%:                          12 W prolungati / 18 W brevi
+  CPU calda o telemetria incompleta:       18 W prolungati / 25 W brevi
+La finestra media prolungata e' ridotta a massimo 8 secondi; la finestra breve
+resta quella del firmware. RAPL gestisce medie su finestre temporali, non e'
+un limite istantaneo sul consumo totale del portatile. I limiti preesistenti
+piu' bassi e i massimi/minimi esposti dal firmware vengono rispettati.
+Le scritture vengono rilette, accettando piccoli arrotondamenti hardware.
+Se RAPL e' disabilitato, incompleto o rifiuta un parametro, si ripristinano le
+impostazioni RAPL precedenti e si usa il controllo della frequenza. Un eventuale
+ripristino parziale viene segnalato e ritentato. Il blocco di RAPL viene rimosso
+al successivo ritorno alla corrente, consentendo un nuovo tentativo.
+
+Con RAPL, al 20% o durante il raffreddamento il turbo e' escluso e il massimo
+CPU e' fino a 2,4 GHz; al 10% e' fino a 1,8 GHz, sempre rispettando il minimo
+hardware e il massimo originale. A 80 C entra il raffreddamento, che rimane
+attivo fino a 72 C per evitare continue commutazioni.
+In assenza di RAPL resta il profilo adattivo precedente: normalmente fino a
+2,4 GHz, con turbo per nuovi picchi di carico fino a 6 secondi, solo sopra il
+20% di batteria e sotto 75 C. Tra i picchi passano almeno 30 secondi e servono
+3 secondi di carico leggero. Il turbo si interrompe a 80 C e con sensori
+illeggibili; con batteria bassa o CPU calda il massimo scende a 1,8 GHz.
+Questi sono valori iniziali, non una taratura dimostrata ottimale. Un confronto
+sull'autonomia richiede sessioni con luminosita', applicazioni e lavoro simili.
+
+ALTRI COMPONENTI
+Schermo ridotto fino al 40% allo scollegamento, senza aumentare una luminosita'
+gia' piu' bassa; resta regolabile manualmente. Retroilluminazione tastiera
+spenta inizialmente e regolabile manualmente. Il monitor Cinnamon oscura lo
+schermo dopo 45 secondi di inattivita' e lo spegne dopo 3 minuti. Le impostazioni
+precedenti vengono ripristinate quando torna l'alimentatore.
+Audio: auto-sospensione del codec dopo almeno 10 secondi, risparmio controller
+se supportato. SATA: med_power_with_dipm sui collegamenti con impostazioni
+compatibili, senza rendere meno restrittivi quelli gia' configurati per il
+massimo risparmio. I controlli opzionali non supportati vengono segnalati.
+NVIDIA: il monitor della sessione utente richiede GPUPowerMizerMode=0 (adattivo)
+tramite nvidia-settings, verifica il valore e conserva quello precedente.
+Lo ripristina con alimentatore o disattivazione, anche dopo un riavvio del
+monitor. Se il controllo non e' disponibile nella sessione, lo mostra in Consumi.
+La GT 650M non supporta RTD3 delle GPU NVIDIA moderne: non viene spenta o
+scollegata la GPU che gestisce lo schermo. Nessun cambio del driver video,
+nessuna sospensione forzata di USB, Wi-Fi o Bluetooth, nessun overclock.
+I processi piu' impegnativi sono mostrati per individuare consumi evitabili;
+nessuna applicazione viene chiusa o rallentata automaticamente.
+
+MISURE E DIAGNOSTICA
+Il servizio controlla la corrente ogni secondo tramite i file online degli
+alimentatori: una batteria piena o la ricarica sospesa non simulano lo
+scollegamento. L'AC illeggibile non attiva un nuovo profilo; se il profilo era
+gia' attivo, esclude il turbo e conserva gli originali per il ripristino.
+Il registro /run/macbook-extreme-power/restore.json conserva tutti gli originali
+prima delle modifiche, anche in caso di riavvio del processo. Con alimentatore,
+disattivazione o arresto del servizio ripristina i valori. Un ripristino fallito
+non cancella il registro e viene ritentato. /run e' azzerato al riavvio macchina.
+
+La finestra iniziale mostra ora ricarica e consumi in tempo reale. La vista
+live-power.py si aggiorna ogni secondo, con un grafico degli ultimi 2 minuti.
+Legge soltanto i dati: non scrive parametri hardware, non cambia il limite di
+ricarica e non richiede password. Per questo aggiornamento della vista basta
+chiudere e riaprire l'app; non occorre reinstallare il servizio di sistema.
+Il pulsante Impostazioni conserva il flusso originale 80% / 100% e risparmio.
+Il pulsante Consumi delle impostazioni apre la vista in tempo reale.
+Il monitor in background conserva il suo avvio originale (--monitor --replace).
+
+Le quattro misure principali della vista sono distinte:
+  - Entrata nella batteria: watt netti di ricarica da power_now o corrente per
+    tensione, con direzione stabilita dallo stato Charging/Discharging;
+  - Consumo del computer: potenza prelevata dalla batteria quando l'alimentatore
+    e' scollegato; con corrente collegata resta non disponibile;
+  - Consumo CPU: package RAPL dal servizio, solo se aggiornato da meno di 10 s;
+  - Totale dall'alimentatore: solo potenza NOW misurata, se esposta dal driver.
+Su questo MacBook ADP1 espone soltanto online: non e' disponibile il totale
+assorbito dall'alimentatore, ne' il consumo totale del computer durante la
+ricarica. I watt che entrano nella batteria non rappresentano quel totale.
+Non si usano potenza nominale, limiti programmati o somme CPU+batteria per
+inventare un dato mancante. I dati mancanti sono indicati con un trattino,
+senza essere sostituiti da zero. Con alimentatore scollegato l'ingresso e' 0 W.
+La vista mostra anche tensione e corrente della batteria, temperatura CPU,
+soglia scelta e stato del profilo. Le curve mancanti hanno interruzioni.
+La cronologia del grafico resta in memoria per la durata della finestra;
+lo storico CSV mantiene il formato e la cadenza di 30 secondi precedenti.
+La lettura da terminale, senza grafica, e' disponibile con:
+  /usr/bin/python3 ~/.local/share/macbook-charge/live-power.py --readings
+
+Le misure del servizio e dello storico comprendono:
+  - consumo del computer: power_now o corrente x tensione della batteria;
+  - media recente del consumo (costante di tempo di circa 60 secondi);
+  - consumo del package CPU dalle differenze del contatore energetico RAPL;
+  - temperatura CPU e budget confermati;
+  - cinque processi piu' impegnativi, da differenze CPU su circa 10 secondi;
+  - disponibilita' della modalita' adattiva NVIDIA.
+Valori non leggibili restano non disponibili: non sono sostituiti con zeri.
+Le pause lunghe (ad esempio sospensione) non sono integrate come consumi misurati.
+Il monitor utente registra ogni 30 secondi le misure aggiornate in
+~/.local/state/macbook-charge/consumi.csv, con una rotazione dopo 2 MiB e una
+sola copia precedente. Lo storico non comprende nomi o argomenti dei processi.
+Eventuali baseline-*.csv sono brevi rilevazioni del profilo precedente durante
+l'uso corrente: non sono benchmark controllati e non provano un miglioramento.
+
+Stato servizio: systemctl status macbook-extreme-power.service
+Log servizio: journalctl -u macbook-extreme-power.service
+Dati correnti: /run/macbook-extreme-power/status.json
+Monitor utente: ~/.local/state/macbook-charge/charge-manager.log
+GPU: ~/.local/state/macbook-charge/gpu-status.json
+Nel JSON profile deve essere balanced-rapl-v2; controller distingue rapl da
+frequency. complete verifica i controlli obbligatori e i ripristini; warnings
+elenca fallback e controlli opzionali non applicati. turbo indica il permesso
+al turbo, non una misura della frequenza effettiva.
+
+Test: python3 -m unittest discover -s ~/.local/share/macbook-charge -p 'test_*.py'
+Backup precedenti: sottocartella backups nella cartella dell'app.
+
+RIFERIMENTI PRIMARI
+https://docs.kernel.org/admin-guide/pm/cpufreq.html
+https://docs.kernel.org/admin-guide/pm/intel_pstate.html
+https://docs.kernel.org/power/powercap/powercap.html
+https://docs.kernel.org/power/power_supply_class.html
+https://cdn.kernel.org/doc/html/latest/sound/designs/powersave.html
+https://www.kernel.org/doc/html/latest/firmware-guide/acpi/video_extension.html
+https://download.nvidia.com/XFree86/Linux-x86_64/470.256.02/README/dynamicpowermanagement.html
+https://github.com/NVIDIA/nvidia-settings/blob/main/src/parse.c
+https://nvidia.github.io/cuda-python/cuda-bindings/13.3.2/module/generated/cuda.bindings.nvml.PowerMizerMode.html
