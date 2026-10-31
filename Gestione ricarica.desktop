@@ -1,0 +1,17 @@
+execute failed:
+    Could not start serviceManager:
+        Cannot locate HTTP port of service:
+            Request for service HTTP address failed:
+                Cannot connect to ipc via "/tmp/state-ipc/state-release.sock":
+                    'dial unix /tmp/state-ipc/state-release.sock: connect: operation not permitted':
+                        'connect: operation not permitted': operation not permitted
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Gestione ricarica
+Comment=Ricarica 80% o 100%, prestazioni e autonomia con CPU adattiva, budget Intel e misure dei consumi
+Exec=/usr/bin/python3 /home/mac/.local/share/macbook-charge/charge-manager.py
+Icon=battery
+Terminal=true
+Categories=Settings;HardwareSettings;
+StartupNotify=false
