@@ -1,10 +1,3 @@
-execute failed:
-    Could not start serviceManager:
-        Cannot locate HTTP port of service:
-            Request for service HTTP address failed:
-                Cannot connect to ipc via "/tmp/state-ipc/state-release.sock":
-                    'dial unix /tmp/state-ipc/state-release.sock: connect: operation not permitted':
-                        'connect: operation not permitted': operation not permitted
 """Run with python3 -m unittest discover -s this-directory -p 'test_*.py'."""
 
 import importlib.util
